@@ -1,28 +1,24 @@
-// src/post/post.service.ts
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Post } from './post.entity';
 
 @Injectable()
 export class PostService {
-  constructor(
-    @InjectRepository(Post)
-    private postRepository: Repository<Post>,
-  ) {}
+  create(createPostInput: any) {
+    return 'This action adds a new post';
+  }
 
-  async getLatestPosts(limit: number): Promise<Post[]> {
-    const posts = await this.postRepository.find({
-      where: { status: 'public' },
-      order: { created_at: 'DESC' },
-      take: limit,
-    });
+  findAll() {
+    return `This action returns all post`;
+  }
 
-    return posts.map(post => {
-      if (!post.image_path.startsWith('http')) {
-        post.image_path = `${process.env.BASE_URL}/uploads/${post.image_path}`;
-      }
-      return post;
-    });
+  findOne(id: number) {
+    return `This action returns a #${id} post`;
+  }
+
+  update(id: number, updatePostInput: any) {
+    return `This action updates a #${id} post`;
+  }
+
+  remove(id: number) {
+    return `This action removes a #${id} post`;
   }
 }

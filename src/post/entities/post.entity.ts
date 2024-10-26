@@ -1,9 +1,9 @@
 import { Entity, Column, PrimaryGeneratedColumn, Timestamp, ManyToOne, JoinColumn } from 'typeorm';
-import { User } from '../user/user.entity'
-import { Category } from '../category/category.entity';
+import { Users } from '../../user/entities/user.entity'
+import { Category } from '../../category/entities/category.entity';
 
 @Entity('posts')
-export class Post {
+export class Posts {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -31,9 +31,9 @@ export class Post {
   @Column({ type: 'enum', enum: ['public', 'hidden'], default: 'public' })
   status: string;
 
-  @ManyToOne(() => User, user => user.posts)
+  @ManyToOne(() => Users, user => user.posts)
   @JoinColumn({ name: 'author_id' })
-  author: User;
+  author: Users;
 
   @ManyToOne(() => Category, category => category.posts)
   @JoinColumn({ name: 'category_id' })
