@@ -9,6 +9,7 @@ export const dataSourceOptions: DataSourceOptions = {
     database: "dablog",
     entities: ['dist/**/*.entity.js'],
     migrations: ['dist/db/migrations/*.js'],
+    //logging: true,
     synchronize: false
 }
 

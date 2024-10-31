@@ -7,7 +7,8 @@ import { ConfigModule } from '@nestjs/config';
 import { UserModule } from './user/user.module';
 import { PostModule } from './post/post.module';
 import { CategoryModule } from './category/category.module';
-import { AuthModule } from './auth/auth.module';
+import { AuthModule } from './auth/auth.module'; 
+import { from } from 'form-data';   
 
 @Module({
   imports: [
@@ -17,7 +18,6 @@ import { AuthModule } from './auth/auth.module';
     PostModule,
     CategoryModule,
     AuthModule,
-
   ],
   controllers: [AppController],
   providers: [AppService],

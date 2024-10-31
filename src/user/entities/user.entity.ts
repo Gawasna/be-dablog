@@ -14,6 +14,9 @@ export class Users {
 
   @Column()
   password: string;
+
+  @Column({ default: 1 })
+  status: number;
   
   @Column({ nullable: true })
   avatar: string;
