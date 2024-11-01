@@ -6,6 +6,5 @@ export class LoginUserDto {
     email: string;
 
     @IsNotEmpty()
-    //Thêm validate nếu cần
     password: string;
 }

@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, HttpException, Injectable, UnauthorizedE
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Request } from 'express';
-import { Users } from "src/user/entities/user.entity"; // Import entity
+import { Users } from "src/user/entities/user.entity"; 
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 
@@ -11,7 +11,7 @@ export class AuthGuard implements CanActivate {
     constructor(
         private jwtService: JwtService,
         private configService: ConfigService,
-        @InjectRepository(Users) private userRepository: Repository<Users> // Inject repository for user
+        @InjectRepository(Users) private userRepository: Repository<Users> 
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -26,12 +26,10 @@ export class AuthGuard implements CanActivate {
             const payload = await this.jwtService.verifyAsync(token, {
                 secret: this.configService.get<string>('JWT_SECRET')
             });
-            
-            // Lấy thông tin người dùng từ cơ sở dữ liệu và kiểm tra vai trò
             const user = await this.userRepository.findOne({ where: { id: payload.id } });
             if (!user) throw new UnauthorizedException('User not found');
             
-            request['user_data'] = { ...payload, role: user.role }; // Gắn role từ DB vào payload
+            request['user_data'] = { ...payload, role: user.role };
         } catch (error) {
             throw new HttpException({
                 status: 419,

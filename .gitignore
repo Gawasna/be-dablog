@@ -54,3 +54,10 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+#sh powershell files
+Lay_cay_thu_muc.ps1
+output.txt
+
+#test
+test/*.jpg

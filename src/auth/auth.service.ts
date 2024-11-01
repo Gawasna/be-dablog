@@ -12,15 +12,31 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class AuthService {
     constructor(
-        @InjectRepository(Users) private usersRepository:Repository<Users>,
+        @InjectRepository(Users) 
+        private usersRepository:Repository<Users>,
         private JwtService:JwtService,
         private ConfigService:ConfigService
     ){}
 
     async signup (SignupUserDto:SignupUserDto): Promise<Users> {
+        const checkExistEmail = await this.usersRepository.findOne({ where: { email: SignupUserDto.email } });
+        if (checkExistEmail) {
+            throw new HttpException('Email already exists', HttpStatus.BAD_REQUEST);
+        }
+        const existingUserByUsername = await this.usersRepository.findOne({ where: { username: SignupUserDto.username } });
+        if (existingUserByUsername) {
+            throw new HttpException('Username already exists', HttpStatus.BAD_REQUEST);
+        }
         //Bcrypt
         const hashpassword = await this.hashpassword(SignupUserDto.password);
-        return await this.usersRepository.save({...SignupUserDto, refresh_token:"refresh_token_default", password:hashpassword});
+        //prevent overwriting the roles of the user
+        const userD = {
+            ...SignupUserDto,
+            password: hashpassword,
+            refresh_token: 'default-refresh-token',
+            role: 'user'
+        };
+        return await this.usersRepository.save(userD);
     }
 
     async login (LoginUserDto:LoginUserDto):Promise<any> {
