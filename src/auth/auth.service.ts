@@ -1,13 +1,18 @@
+import { UserService } from './../user/user.service';
 import { JwtPayload } from './../../node_modules/@types/jsonwebtoken/index.d';
+import { MailService } from '../mail/mail.service';
 import { LoginUserDto } from './dto/login-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { SignupUserDto } from './dto/signup-user.dto';
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { Users } from 'src/user/entities/user.entity';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { RequestOtpDto } from './dto/request-otp.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -15,7 +20,9 @@ export class AuthService {
         @InjectRepository(Users) 
         private usersRepository:Repository<Users>,
         private JwtService:JwtService,
-        private ConfigService:ConfigService
+        private ConfigService:ConfigService,
+        private readonly mailService: MailService,
+        private readonly userService: UserService
     ){}
 
     async signup (SignupUserDto:SignupUserDto): Promise<Users> {
@@ -95,4 +102,57 @@ export class AuthService {
         return hash;
     }
 
+    async sendOtp(requestOtpDto: RequestOtpDto): Promise<void> {
+        const user = await this.userService.findByEmail(requestOtpDto.email);
+        if (!user) throw new NotFoundException('User not found');
+
+        const otp = this.generateOtp();
+        user.otp = otp;
+        user.otpExpires = new Date(Date.now() + 5 * 60 * 1000); // Hết hạn sau 5 phút
+        await this.userService.save(user);
+
+        await this.mailService.sendOtpEmail(user.email, otp);
+    }
+
+    async verifyOtp({ email, otp, newPassword }: VerifyOtpDto): Promise<void> {
+        const user = await this.userService.findByEmail(email);
+        if (!user || user.otp !== otp || user.otpExpires < new Date()) {
+            throw new BadRequestException('Invalid or expired OTP');
+        }
+
+        await this.userService.updatePassword(user.id, newPassword);
+        user.otp = null;
+        user.otpExpires = null;
+        await this.userService.save(user);
+    }
+
+    async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<void> {
+        const { email, otp, newPassword } = resetPasswordDto;
+
+        const user = await this.userService.findByEmail(email);
+        if (!user || user.otp !== otp || user.otpExpires < new Date()) {
+            throw new BadRequestException('Invalid or expired OTP');
+        }
+
+        if (!this.validatePassword(newPassword)) {
+            throw new BadRequestException('Password does not meet security requirements');
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        user.password = hashedPassword;
+
+        user.otp = null;
+        user.otpExpires = null;
+
+        await this.userService.save(user);
+    }
+
+    private validatePassword(password: string): boolean {
+        return password.length >= 8;
+    }
+
+    private generateOtp(): string {
+        return Math.floor(100000 + Math.random() * 900000).toString(); 
+    }
 }

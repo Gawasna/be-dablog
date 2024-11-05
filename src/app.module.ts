@@ -11,6 +11,9 @@ import { AuthModule } from './auth/auth.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { TestController } from './test-con.controller';
+import { CommentService } from './comment/comment.service';
+import { CommentController } from './comment/comment.controller';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -19,6 +22,7 @@ import { TestController } from './test-con.controller';
     UserModule,
     PostModule,
     CategoryModule,
+    MailModule,
     //thử nghiệm throttle
     ThrottlerModule.forRoot([{
       name: 'login_and_signup',
@@ -41,14 +45,16 @@ import { TestController } from './test-con.controller';
   ],
   controllers: [
     AppController,
-    TestController
+    TestController,
+    CommentController
   ],
   providers: [
     AppService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
-    }
+    },
+    CommentService
   ],
 })
 export class AppModule {}

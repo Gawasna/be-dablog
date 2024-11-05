@@ -4,8 +4,12 @@ import { AuthService } from './auth.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SignupUserDto } from './dto/signup-user.dto';
 import { Users } from 'src/user/entities/user.entity';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule } from '@nestjs/config';
+import { JwtModule, JwtService } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MailService } from 'src/mail/mail.service';
+import { MailModule } from 'src/mail/mail.module';
+import { UserService } from 'src/user/user.service';
+import { UserModule } from 'src/user/user.module';
 
 @Module({
   imports: [
@@ -17,9 +21,10 @@ import { ConfigModule } from '@nestjs/config';
       //get expriesIn from .env ('JWT_REFRESH_EXP')
       signOptions: {expiresIn: '1h'}
     }),
-    ConfigModule
+    ConfigModule,
+    UserModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService]
+  providers: [AuthService, MailService, UserService],
 })
 export class AuthModule {}

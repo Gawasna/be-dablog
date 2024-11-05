@@ -1,6 +1,7 @@
-import { Entity, Column, PrimaryGeneratedColumn, Timestamp, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, Timestamp, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Users } from '../../user/entities/user.entity'
 import { Category } from '../../category/entities/category.entity';
+import { Comment } from '../../comment/entities/comment.entity';
 
 @Entity('posts')
 export class Posts {
@@ -38,4 +39,7 @@ export class Posts {
   @ManyToOne(() => Category, category => category.posts)
   @JoinColumn({ name: 'category_id' })
   category: Category;
+
+  @OneToMany(() => Comment, comment => comment.post)
+  comments: Comment[];
 }
