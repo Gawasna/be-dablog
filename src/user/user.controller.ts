@@ -26,12 +26,10 @@ export class UserController {
     @UseGuards(AuthGuard)
     @Post()
     createUser(@Body() signupUserRDto: SignupUserRDto , @Req() req: any): Promise<Users> {
-        // Chỉ admin mới có quyền thêm người dùng với role khác
         if (req.user_data.role !== 'admin' && signupUserRDto.role && signupUserRDto.role !== 'user') {
             throw new ForbiddenException('Permission denied');
         }
         return //this.userService.create(signupUserRDto);
     }
-
 
 }

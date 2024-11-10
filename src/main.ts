@@ -4,6 +4,9 @@ import { join } from 'path';
 import * as fs from 'fs';
 import { AppModule } from './app.module';
 
+const dotenv = require('dotenv');
+dotenv.config();
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.enableCors({
@@ -27,5 +30,7 @@ async function bootstrap() {
   }
   app.useStaticAssets(uploadsPath);
   await app.listen(3000);
+  console.log('SMTP user: ', process.env.GOOGLE_MAIL_CLIENT);
+  console.log('SMTP pass: ', process.env.GOOGLE_MAIL_KEY);
 }
 bootstrap();

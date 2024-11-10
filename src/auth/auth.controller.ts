@@ -74,7 +74,7 @@ export class AuthController {
     @Get('test-send-otp')
     async testSendOtp() {
         const otp = this.generateOtp();
-        const testEmail = 'hunglephi112@gmail.com';
+        const testEmail = 'doanvantri2004@gmail.com';
         
         await this.MailService.sendOtpEmail(testEmail, otp);
         return { message: `OTP has been sent to ${testEmail}`, otp };

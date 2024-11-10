@@ -14,16 +14,24 @@ import { TestController } from './test-con.controller';
 import { CommentService } from './comment/comment.service';
 import { CommentController } from './comment/comment.controller';
 import { MailModule } from './mail/mail.module';
+import { CacheModule } from '@nestjs/cache-manager';
+
+const dotenv = require('dotenv');
+dotenv.config();
 
 @Module({
   imports: [
     TypeOrmModule.forRoot(dataSourceOptions),
     ConfigModule.forRoot(),
     UserModule,
+    CacheModule.register({
+      isGlobal: true,
+      ttl: 60000,
+      max: 100,
+    }),
     PostModule,
     CategoryModule,
     MailModule,
-    //thử nghiệm throttle
     ThrottlerModule.forRoot([{
       name: 'login_and_signup',
       ttl: 60000,

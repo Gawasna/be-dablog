@@ -10,7 +10,6 @@ import { MailService } from 'src/mail/mail.service';
 import { MailModule } from 'src/mail/mail.module';
 import { UserService } from 'src/user/user.service';
 import { UserModule } from 'src/user/user.module';
-
 @Module({
   imports: [
     TypeOrmModule.forFeature([Users]),
