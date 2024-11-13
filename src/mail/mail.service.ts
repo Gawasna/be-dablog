@@ -26,4 +26,13 @@ export class MailService {
             `,
         });
     }
+
+    async sendPasswordResetConfirmation(email: string) {
+        await this.mailerService.sendMail({
+            to: email,
+            subject: 'Password Reset Confirmation',
+            text: 'Your password has been successfully reset.',
+            html: '<p>Your password has been successfully reset.</p>',
+        });
+    }
 }

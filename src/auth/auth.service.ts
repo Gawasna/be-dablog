@@ -13,9 +13,13 @@ import { ConfigService } from '@nestjs/config';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class AuthService {
+
+    private readonly logger = new Logger(AuthService.name);
+
     constructor(
         @InjectRepository(Users) 
         private usersRepository:Repository<Users>,
@@ -56,7 +60,7 @@ export class AuthService {
         //Tối ưu hiệu suất
         if(!isMatch) {
             throw new HttpException("Password is incorrect", HttpStatus.UNAUTHORIZED);
-            return {message: 'Password is incorrect'};
+            return {message: 'Password is incorrect :3'};
         }
         //Tạo access token và refresh token
         const payload = {id:user.id, email:user.email};
@@ -112,6 +116,7 @@ export class AuthService {
         await this.userService.save(user);
 
         await this.mailService.sendOtpEmail(user.email, otp);
+        this.logger.log(`OTP sent to ${user.email}`);
     }
 
     async verifyOtp({ email, otp, newPassword }: VerifyOtpDto): Promise<void> {
@@ -119,34 +124,43 @@ export class AuthService {
         if (!user || user.otp !== otp || user.otpExpires < new Date()) {
             throw new BadRequestException('Invalid or expired OTP');
         }
-
-        await this.userService.updatePassword(user.id, newPassword);
-        user.otp = null;
-        user.otpExpires = null;
-        await this.userService.save(user);
-    }
-
-    async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<void> {
-        const { email, otp, newPassword } = resetPasswordDto;
-
-        const user = await this.userService.findByEmail(email);
-        if (!user || user.otp !== otp || user.otpExpires < new Date()) {
-            throw new BadRequestException('Invalid or expired OTP');
-        }
-
+    
         if (!this.validatePassword(newPassword)) {
             throw new BadRequestException('Password does not meet security requirements');
         }
-
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-
+    
+        const hashedPassword = await this.hashpassword(newPassword);
         user.password = hashedPassword;
-
         user.otp = null;
         user.otpExpires = null;
-
         await this.userService.save(user);
+    
+        this.logger.log(`OTP verified and password updated for ${user.email}`);
     }
+
+    // async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<void> {
+    //     const { email, otp, newPassword } = resetPasswordDto;
+
+    //     const user = await this.userService.findByEmail(email);
+    //     if (!user || user.otp !== otp || user.otpExpires < new Date()) {
+    //         throw new BadRequestException('Invalid or expired OTP');
+    //     }
+
+    //     if (!this.validatePassword(newPassword)) {
+    //         throw new BadRequestException('Password does not meet security requirements');
+    //     }
+
+    //     const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    //     user.password = hashedPassword;
+
+    //     user.otp = null;
+    //     user.otpExpires = null;
+
+    //     await this.userService.save(user);
+    //     this.logger.log(`Password reset for ${user.email}`);
+    //     await this.mailService.sendPasswordResetConfirmation(user.email);
+    // }
 
     private validatePassword(password: string): boolean {
         return password.length >= 8;

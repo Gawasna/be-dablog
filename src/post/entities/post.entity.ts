@@ -20,6 +20,9 @@ export class Posts {
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   created_at: Timestamp;
 
+  @Column({ nullable: true })
+  description: string;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updated_at: Timestamp;
 

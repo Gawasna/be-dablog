@@ -16,6 +16,8 @@ import { TestController } from './test-con.controller';
 import { CommentService } from './comment/comment.service';
 import { CommentController } from './comment/comment.controller';
 import { MailModule } from './mail/mail.module';
+import { FilesController } from './files/files.controller';
+import { FilesService } from './files/files.service';
 
 const dotenv = require('dotenv');
 dotenv.config();
@@ -39,6 +41,7 @@ dotenv.config();
     AppController,
     TestController,
     CommentController,
+    FilesController,
   ],
   providers: [
     AppService,
@@ -48,6 +51,7 @@ dotenv.config();
     //   useClass: ThrottlerGuard,
     // },
     CommentService,
+    FilesService,
   ],
 })
 export class AppModule {}

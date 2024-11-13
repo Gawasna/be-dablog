@@ -66,10 +66,10 @@ export class AuthController {
         return this.AuthService.verifyOtp(verifyOtpDto);
     }
 
-    @Post('reset-password')
-    async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
-        return this.AuthService.resetPassword(resetPasswordDto);
-    }
+    // @Post('reset-password')
+    // async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    //     return this.AuthService.resetPassword(resetPasswordDto);
+    // }
 
     @Get('test-send-otp')
     async testSendOtp() {
