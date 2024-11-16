@@ -10,6 +10,7 @@ dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
   app.enableCors({
     origin: 'http://localhost:5173',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
@@ -27,11 +28,10 @@ async function bootstrap() {
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads' , '..')));
   const srPath = express.static(join(__dirname, '..', 'uploads', '..'));
   app.use(srPath);
-  // await app.listen(3000);
 
   await app.listen(3000).then(() => {
     console.log('Server is running on: http://localhost:3000');
-    console.log('Require connection to MariaDB (dablog): ', process.env.DB_NAME);
+    console.log('Require connection to MariaDB : ', process.env.DB_NAME);
     console.log('Using static assets :'
       , join(__dirname, '..', 'uploads', 'thumbnails')
       , join(__dirname, '..', 'uploads', 'content')

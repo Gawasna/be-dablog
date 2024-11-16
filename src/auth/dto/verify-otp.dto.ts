@@ -1,4 +1,3 @@
-// verify-otp.dto.ts
 import { IsString, IsEmail, MinLength } from 'class-validator';
 
 export class VerifyOtpDto {
@@ -12,3 +11,5 @@ export class VerifyOtpDto {
     @MinLength(8, { message: 'Password must be at least 8 characters long' })
     newPassword: string;
 }
+
+//NO FIX

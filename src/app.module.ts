@@ -18,6 +18,7 @@ import { CommentController } from './comment/comment.controller';
 import { MailModule } from './mail/mail.module';
 import { FilesController } from './files/files.controller';
 import { FilesService } from './files/files.service';
+import { CommentModule } from './comment/comment.module';
 
 const dotenv = require('dotenv');
 dotenv.config();
@@ -36,6 +37,7 @@ dotenv.config();
     CategoryModule,
     MailModule,
     AuthModule,
+    CommentModule,
   ],
   controllers: [
     AppController,

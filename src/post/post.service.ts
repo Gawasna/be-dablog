@@ -1,4 +1,4 @@
-import { Inject, Injectable, Query } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException, Query } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Banners } from './banner.entity';
@@ -7,22 +7,29 @@ import { Comment } from 'src/comment/entities/comment.entity';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { join } from 'path';
 import { Response } from 'express';
+import { FilesService } from 'src/files/files.service';
 
 @Injectable()
 export class PostService {
 
   private readonly CACHE_TTL = 60 * 1000;
   private readonly SEARCH_LIMIT = 5;
+  private readonly logger = new Logger(PostService.name);
 
   constructor(
     @InjectRepository(Banners)
     private readonly bannerRepository: Repository<Banners>,
     @InjectRepository(Posts)
     private readonly postRepository: Repository<Posts>,
+    @InjectRepository(Comment)
+    private readonly commentRepository: Repository<Comment>,
     @Inject(CACHE_MANAGER)
-    private cacheManager: Cache
+    private cacheManager: Cache,
+    @Inject(FilesService)
+    private readonly filesService: FilesService,
   ) { }
 
+  //done
   async liveSearch(query: string): Promise<Partial<Posts>[]> {
     const cacheKey = `live_search:${query}`;
     const cachedResults = await this.cacheManager.get(cacheKey);
@@ -47,6 +54,7 @@ export class PostService {
     return results;
   }
 
+  //done
   async getLatestBanners(): Promise<Banners[]> {
     return await this.bannerRepository
       .createQueryBuilder('banner')
@@ -55,6 +63,7 @@ export class PostService {
       .getMany();
   }
 
+  //soon
   async getLatestPosts(): Promise<Posts[]> {
     return await this.postRepository
       .createQueryBuilder('post')
@@ -65,7 +74,7 @@ export class PostService {
       .getMany();
   }
 
-
+  //soon
   async getPopularPosts(): Promise<Posts[]> {
     return await this.postRepository
       .createQueryBuilder('post')
@@ -77,32 +86,32 @@ export class PostService {
       .getMany();
   }
 
+  //done
   async getPost(post_id: number): Promise<Posts> {
-    return await this.postRepository
+    const post = this.postRepository
       .createQueryBuilder('post')
       .leftJoinAndSelect('post.category', 'category')
-      .where('post.id = :post_id', { post_id })
+      .leftJoinAndSelect('post.comments', 'comment')
+      .select(['post', 'category.name', 'comment'])
+      .where('post.id = :id', { id: post_id })
       .getOne();
+    this.logger.log(`Fetching resources with id: ${post_id}`);
+    return await post;
   }
-  // async GetDetailPost(post_id: number): Promise<Posts> {
 
-  //   const post = await this.postRepository
-  //     .createQueryBuilder('post')
-  //     .where('post.id = :post_id', { post_id })
-  //     .getOne();
+  //need fix
+  async getCommentsByPostId(postId: number): Promise<Comment[]> {
+    const post = await this.postRepository.findOne({ where: { id: postId } });
+    if (!post) {
+      throw new NotFoundException(`Post with ID ${postId} not found`);
+    }
 
-  //   const imageUrl = post.image_path.startsWith('http') 
-  //     ? post.image_path 
-  //     : join(process.cwd(), 'uploads', 'thumbnails', post.image_path);
+    const comments = await this.commentRepository.find({
+      where: { post_id: postId },
+      relations: ['author'],
+      order: { created_at: 'DESC' },
+    });
 
-  //   const contentPath = post.content_path.startsWith('http')
-  //     ? post.content_path
-  //     : join(process.cwd(), 'uploads', 'content', post.content_path);
-
-  //   return await this.postRepository
-  //     .createQueryBuilder('post')
-  //     .leftJoinAndSelect('post.category', 'category')
-  //     .where('post.id = :post_id', { post_id })
-  //     .getOne();
-  // }
+    return comments;
+  }
 }

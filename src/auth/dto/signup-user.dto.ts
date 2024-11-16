@@ -12,7 +12,10 @@ export class SignupUserDto {
     //@MinLength(6)
     password: string;
 
-    //add avatar in future
+    @IsOptional()
+    default: 'default-avatar.jpg'
+    avatar: string;
+
     @IsOptional()
     status: number;
 }

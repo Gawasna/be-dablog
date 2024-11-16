@@ -1,21 +1,19 @@
-import {Entity, OneToOne} from "typeorm";
-import { PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from "typeorm";
 import { Posts } from "../../post/entities/post.entity";
 import { Users } from "../../user/entities/user.entity";
 
 @Entity('comments')
 export class Comment {
-    //comment entity
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({ nullable: false }) // Hoặc { nullable: true } tùy vào yêu cầu nghiệp vụ
+    @Column({ nullable: false })
     post_id: number;
 
-    @Column({ nullable: false }) // Hoặc { nullable: true } tùy vào yêu cầu nghiệp vụ
+    @Column({ nullable: false })
     user_id: number;
 
-    @Column({ type: 'text' })
+    @Column({ type: 'text', nullable: false })
     content: string;
 
     @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
