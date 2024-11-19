@@ -6,8 +6,6 @@ import { RoleGuard } from 'src/auth/role.guard';
 import { Roles } from 'src/auth/role.decorator';
 import { Role } from './role.enum';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { SignupUserDto } from 'src/auth/dto/signup-user.dto';
 import { SignupUserRDto } from './dto/signup-userR.dto';
 
 @ApiBearerAuth()

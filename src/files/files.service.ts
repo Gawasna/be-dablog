@@ -1,10 +1,12 @@
-import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger, BadRequestException } from '@nestjs/common';
 import { Response } from 'express';
 import { join } from 'path';
 import { existsSync, createReadStream, promises as fsPromises, access } from 'fs';
 import axios from 'axios';
 import * as sharp from 'sharp';
 import { isURL } from 'validator';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 
 @Injectable()
 export class FilesService {
@@ -92,7 +94,7 @@ export class FilesService {
   }
 
   async getAvatar(
-    fileName: string, 
+    fileName: string,
     res: Response,
     width?: string | number,
     height?: string | number,
@@ -101,7 +103,7 @@ export class FilesService {
     let filePath = join(process.cwd(), 'uploads', 'avatars', decodedFileName);
     try {
       if (filePath == null) {
-         return filePath = join(process.cwd(), 'uploads', 'avatars', 'default-avatar.jpg');
+        return filePath = join(process.cwd(), 'uploads', 'avatars', 'default-avatar.jpg');
       }
       await fsPromises.access(filePath);
       const widthInt = width ? parseInt(width as string, 10) : 75;
@@ -116,4 +118,30 @@ export class FilesService {
       return res.status(404).json({ message: 'File not found' });
     }
   }
+
+  generateFileName(file: Express.Multer.File, prefix: string): string {
+    const timestamp = Date.now();
+    const extension = extname(file.originalname);
+    return `${prefix}-${timestamp}${extension}`;
+  }
+
+  validateFileSize(file: Express.Multer.File, maxSize: number) {
+    if (file.size > maxSize) {
+      throw new BadRequestException(`File size should not exceed ${maxSize / 1024 / 1024}MB`);
+    }
+  }
+
+  async saveFile(file: Express.Multer.File, folder: string): Promise<string> {
+    const fileName = this.generateFileName(file, folder);
+    const uploadPath = join(process.cwd(), 'uploads', folder, fileName);
+
+    await fsPromises.writeFile(uploadPath, file.buffer);
+    return fileName;
+  }
+  validateImageFile(file: Express.Multer.File) {
+    if (!file.mimetype.startsWith('image/')) {
+      throw new BadRequestException('Only image files are allowed!');
+    }
+  }
+
 }

@@ -8,6 +8,8 @@ import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { join } from 'path';
 import { Response } from 'express';
 import { FilesService } from 'src/files/files.service';
+import { GetCommentDTO } from 'src/comment/dto/comment.dto';
+import { PostStatisticsService } from 'src/poststatistics/poststatistics.service';
 
 @Injectable()
 export class PostService {
@@ -27,6 +29,7 @@ export class PostService {
     private cacheManager: Cache,
     @Inject(FilesService)
     private readonly filesService: FilesService,
+    private readonly statisticsService: PostStatisticsService,
   ) { }
 
   //done
@@ -64,15 +67,17 @@ export class PostService {
   }
 
   //soon
-  async getLatestPosts(): Promise<Posts[]> {
+  async getLatestPosts(page: number, limit: number): Promise<Posts[]> {
+    const offset = (page - 1) * limit;
     return await this.postRepository
       .createQueryBuilder('post')
       .leftJoinAndSelect('post.category', 'category')
-      .select(['post.id', 'post.title', 'post.image_path', 'post.created_at', 'category.name'])
+      .select(['post.id', 'post.title', 'post.description', 'post.image_path', 'post.created_at', 'category.name'])
       .orderBy('post.created_at', 'DESC')
-      .limit(6)
+      .offset(offset)
+      .limit(limit)
       .getMany();
-  }
+}
 
   //soon
   async getPopularPosts(): Promise<Posts[]> {
@@ -100,18 +105,51 @@ export class PostService {
   }
 
   //need fix
-  async getCommentsByPostId(postId: number): Promise<Comment[]> {
-    const post = await this.postRepository.findOne({ where: { id: postId } });
-    if (!post) {
-      throw new NotFoundException(`Post with ID ${postId} not found`);
-    }
-
-    const comments = await this.commentRepository.find({
-      where: { post_id: postId },
-      relations: ['author'],
-      order: { created_at: 'DESC' },
-    });
-
-    return comments;
+  async getCommentsByPostId(post_id: number): Promise<GetCommentDTO[]> {
+    const comments = await this.commentRepository
+      .createQueryBuilder('comment')
+      .leftJoinAndSelect('comment.user', 'user')
+      .select([
+        'comment.id',
+        'comment.post_id',
+        'comment.user_id',
+        'comment.content',
+        'comment.created_at',
+        'user.id',
+        'user.username',
+        'user.avatar'
+      ])
+      .where('comment.post_id = :post_id', { post_id })
+      .getMany();
+  
+    return comments.map(comment => ({
+      id: comment.id,
+      post_id: comment.post_id,
+      user_id: comment.user_id,
+      content: comment.content,
+      created_at: comment.created_at,
+      user: {
+        id: comment.user.id,
+        username: comment.user.username,
+        avatar: comment.user.avatar
+      }
+    }));
   }
+
+  async likePost(postId: number): Promise<void> {
+    await this.statisticsService.updateLikes(postId, true);
+  }
+
+  // async unlikePost(postId: number): Promise<void> {
+  //   await this.statisticsService.updateLikes(postId, false);
+  // }
+
+  async addComment(postId: number): Promise<void> {
+    await this.statisticsService.updateComments(postId, true);
+  }
+
+  // async deleteComment(postId: number): Promise<void> {
+  //   await this.statisticsService.updateComments(postId, false);
+  // }
+
 }

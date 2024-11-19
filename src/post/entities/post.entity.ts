@@ -1,7 +1,8 @@
-import { Entity, Column, PrimaryGeneratedColumn, Timestamp, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, Timestamp, ManyToOne, JoinColumn, OneToMany, OneToOne } from 'typeorm';
 import { Users } from '../../user/entities/user.entity'
 import { Category } from '../../category/entities/category.entity';
 import { Comment } from '../../comment/entities/comment.entity';
+import { PostStatistics } from 'src/poststatistics/entities/post-statistics.entity';
 
 @Entity('posts')
 export class Posts {
@@ -42,6 +43,9 @@ export class Posts {
   @ManyToOne(() => Category, category => category.posts)
   @JoinColumn({ name: 'category_id' })
   category: Category;
+
+  @OneToOne(() => PostStatistics, (statistics) => statistics.post, { cascade: true })
+  statistics: PostStatistics;
 
   @OneToMany(() => Comment, comment => comment.post)
   comments: Comment[];
