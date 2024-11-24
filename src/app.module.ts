@@ -19,7 +19,6 @@ import { CommentModule } from './comment/comment.module';
 import { AdminService } from './admin/admin.service';
 import { AdminModule } from './admin/admin.module';
 import { AdminController } from './admin/admin.controller';
-import { PostStatisticsService } from './poststatistics/poststatistics.service';
 import { PostStatisticsModule } from './poststatistics/poststatistics.module';
 
 const dotenv = require('dotenv');
@@ -60,7 +59,6 @@ dotenv.config();
     CommentService,
     FilesService,
     AdminService,
-    PostStatisticsService,
   ],
 })
 export class AppModule {}

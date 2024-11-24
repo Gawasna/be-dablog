@@ -1,16 +1,15 @@
-import { Inject, Injectable, Logger, NotFoundException, Query } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Banners } from './banner.entity';
 import { Posts } from './entities/post.entity';
 import { Comment } from 'src/comment/entities/comment.entity';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
-import { join } from 'path';
-import { Response } from 'express';
 import { FilesService } from 'src/files/files.service';
 import { GetCommentDTO } from 'src/comment/dto/comment.dto';
-import { PostStatisticsService } from 'src/poststatistics/poststatistics.service';
-
+import { Like } from 'src/comment/entities/like.entity';
+import { PostStatistics } from 'src/poststatistics/entities/post-statistics.entity';
+import { CreateCommentDTO } from 'src/comment/dto/create-comment.dto';
 @Injectable()
 export class PostService {
 
@@ -21,18 +20,23 @@ export class PostService {
   constructor(
     @InjectRepository(Banners)
     private readonly bannerRepository: Repository<Banners>,
+
     @InjectRepository(Posts)
     private readonly postRepository: Repository<Posts>,
-    @InjectRepository(Comment)
-    private readonly commentRepository: Repository<Comment>,
+    @InjectRepository(Like)
+    private readonly likeRepository: Repository<Like>,
+    @InjectRepository(PostStatistics)
+    private readonly postStatisticsRepository: Repository<PostStatistics>,
+
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
     @Inject(FilesService)
     private readonly filesService: FilesService,
-    private readonly statisticsService: PostStatisticsService,
+    
+    @InjectRepository(Comment)
+    private readonly commentRepository: Repository<Comment>,
   ) { }
 
-  //done
   async liveSearch(query: string): Promise<Partial<Posts>[]> {
     const cacheKey = `live_search:${query}`;
     const cachedResults = await this.cacheManager.get(cacheKey);
@@ -57,7 +61,6 @@ export class PostService {
     return results;
   }
 
-  //done
   async getLatestBanners(): Promise<Banners[]> {
     return await this.bannerRepository
       .createQueryBuilder('banner')
@@ -66,7 +69,6 @@ export class PostService {
       .getMany();
   }
 
-  //soon
   async getLatestPosts(page: number, limit: number): Promise<Posts[]> {
     const offset = (page - 1) * limit;
     return await this.postRepository
@@ -77,21 +79,29 @@ export class PostService {
       .offset(offset)
       .limit(limit)
       .getMany();
-}
+  }
 
-  //soon
   async getPopularPosts(): Promise<Posts[]> {
     return await this.postRepository
       .createQueryBuilder('post')
       .leftJoinAndSelect('post.category', 'category')
       .leftJoin('post_statistics', 'stats', 'stats.post_id = post.id')
-      .select(['post.title', 'post.image_path', 'post.created_at', 'category.name', 'stats.like_count'])
-      .orderBy('stats.like_count', 'DESC')
+      .select([
+        'post.id',
+        'post.title', 
+        'post.description',
+        'post.image_path',
+        'post.created_at',
+        'category.name',
+        'stats.total_likes'
+      ])
+      .where('post.status = :status', { status: 'public' })
+      .orderBy('stats.total_likes', 'DESC')
+      .addOrderBy('post.created_at', 'DESC') // Added secondary sort by creation date
       .limit(5)
       .getMany();
   }
 
-  //done
   async getPost(post_id: number): Promise<Posts> {
     const post = this.postRepository
       .createQueryBuilder('post')
@@ -104,8 +114,7 @@ export class PostService {
     return await post;
   }
 
-  //need fix
-  async getCommentsByPostId(post_id: number): Promise<GetCommentDTO[]> {
+  async getCommentsByPostId(post_id: number, page: number = 1, limit: number = 5): Promise<GetCommentDTO[]> {
     const comments = await this.commentRepository
       .createQueryBuilder('comment')
       .leftJoinAndSelect('comment.user', 'user')
@@ -120,6 +129,8 @@ export class PostService {
         'user.avatar'
       ])
       .where('comment.post_id = :post_id', { post_id })
+      .skip((page - 1) * limit)
+      .take(limit)
       .getMany();
   
     return comments.map(comment => ({
@@ -136,20 +147,169 @@ export class PostService {
     }));
   }
 
-  async likePost(postId: number): Promise<void> {
-    await this.statisticsService.updateLikes(postId, true);
+  //LIKE UNLIKE POST FUNCTION
+  async likePost(postId: number, userId: number): Promise<any> {
+    // Check if post exists
+    const post = await this.postRepository.findOne({
+      where: { id: postId }
+    });
+    
+    if (!post) {
+      throw new NotFoundException('Post not found');
+    }
+
+    // Check and create post statistics if not exists
+    let postStats = await this.postStatisticsRepository.findOne({
+      where: { post_id: postId }
+    });
+
+    if (!postStats) {
+      postStats = this.postStatisticsRepository.create({
+        post_id: postId,
+        total_likes: 0,
+        total_comments: 0
+      });
+      await this.postStatisticsRepository.save(postStats);
+    }
+
+    // Check if user already liked the post
+    const existingLike = await this.likeRepository.findOne({
+      where: { post_id: postId, user_id: userId }
+    });
+
+    if (existingLike) {
+      // Unlike - remove the like
+      await this.likeRepository.remove(existingLike);
+      
+      // Update statistics
+      await this.postStatisticsRepository
+        .createQueryBuilder()
+        .update()
+        .set({ 
+          total_likes: () => "total_likes - 1",
+          updated_at: () => "CURRENT_TIMESTAMP"
+        })
+        .where("post_id = :postId", { postId })
+        .execute();
+
+      return { message: 'Post unliked successfully' };
+    }
+
+    // Create new like
+    const newLike = this.likeRepository.create({
+      post_id: postId,
+      user_id: userId
+    });
+    await this.likeRepository.save(newLike);
+
+    // Update statistics
+    await this.postStatisticsRepository
+      .createQueryBuilder()
+      .update()
+      .set({ 
+        total_likes: () => "total_likes + 1",
+        updated_at: () => "CURRENT_TIMESTAMP"
+      })
+      .where("post_id = :postId", { postId })
+      .execute();
+
+    return { message: 'Post liked successfully' };
   }
 
-  // async unlikePost(postId: number): Promise<void> {
-  //   await this.statisticsService.updateLikes(postId, false);
-  // }
-
-  async addComment(postId: number): Promise<void> {
-    await this.statisticsService.updateComments(postId, true);
+  async checkUserLikedPost(postId: number, userId: number): Promise<boolean> {
+    const existingLike = await this.likeRepository.findOne({
+      where: { 
+        post_id: postId,
+        user_id: userId 
+      }
+    });
+  
+    return !!existingLike; // Convert to boolean
   }
 
-  // async deleteComment(postId: number): Promise<void> {
-  //   await this.statisticsService.updateComments(postId, false);
-  // }
+  //ADD COMMENTS FUNCTION  
+  async addComment(postId: number, userId: number, commentDto: CreateCommentDTO) {
+    const post = await this.postRepository.findOne({
+      where: { id: postId }
+    });
+    
+    if (!post) {
+      throw new NotFoundException('Post not found');
+    }
 
+    let postStats = await this.postStatisticsRepository.findOne({
+      where: { post_id: postId }
+    });
+  
+    if (!postStats) {
+      postStats = this.postStatisticsRepository.create({
+        post_id: postId,
+        total_likes: 0, 
+        total_comments: 0
+      });
+      await this.postStatisticsRepository.save(postStats);
+    }
+
+    const newComment = this.commentRepository.create({
+      post_id: postId,
+      user_id: userId,
+      content: commentDto.content
+    });
+    
+    await this.commentRepository.save(newComment);
+    await this.postStatisticsRepository
+      .createQueryBuilder()
+      .update()
+      .set({ 
+        total_comments: () => "total_comments + 1",
+        updated_at: () => "CURRENT_TIMESTAMP"
+      })
+      .where("post_id = :postId", { postId })
+      .execute();
+  
+    // Get updated comment count
+    const updatedStats = await this.postStatisticsRepository.findOne({
+      where: { post_id: postId }
+    });
+  
+    // Get comment with user details
+    const savedComment = await this.commentRepository
+      .createQueryBuilder('comment')
+      .leftJoinAndSelect('comment.user', 'user')
+      .select([
+        'comment.id',
+        'comment.post_id', 
+        'comment.user_id',
+        'comment.content',
+        'comment.created_at',
+        'user.id',
+        'user.username',
+        'user.avatar'
+      ])
+      .where('comment.id = :id', { id: newComment.id })
+      .getOne();
+  
+    return {
+      comment: {
+        id: savedComment.id,
+        post_id: savedComment.post_id,
+        content: savedComment.content,
+        created_at: savedComment.created_at,
+        user: {
+          id: savedComment.user.id,
+          username: savedComment.user.username,
+          avatar: savedComment.user.avatar
+        }
+      },
+      total_comments: updatedStats.total_comments
+    };
+  }
+
+  //GET NUM COMMENTS
+  async getPostCommentsCount(postId: number): Promise<number> {
+    const stats = await this.postStatisticsRepository.findOne({
+      where: { post_id: postId }
+    });
+    return stats?.total_comments || 0;
+  }
 }

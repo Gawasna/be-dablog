@@ -17,9 +17,7 @@ import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class AuthService {
-
     private readonly logger = new Logger(AuthService.name);
-
     constructor(
         @InjectRepository(Users) 
         private usersRepository:Repository<Users>,
@@ -32,15 +30,13 @@ export class AuthService {
     async signup (SignupUserDto:SignupUserDto): Promise<Users> {
         const checkExistEmail = await this.usersRepository.findOne({ where: { email: SignupUserDto.email } });
         if (checkExistEmail) {
-            throw new HttpException('Email already exists', HttpStatus.BAD_REQUEST);
+            throw new HttpException({ message: 'Email already exists' }, HttpStatus.BAD_REQUEST);
         }
         const existingUserByUsername = await this.usersRepository.findOne({ where: { username: SignupUserDto.username } });
         if (existingUserByUsername) {
-            throw new HttpException('Username already exists', HttpStatus.BAD_REQUEST);
+            throw new HttpException({message: 'Username already exist'}, HttpStatus.BAD_REQUEST);
         }
-        //Bcrypt
         const hashpassword = await this.hashpassword(SignupUserDto.password);
-        //prevent overwriting the roles of the user
         const userD = {
             ...SignupUserDto,
             password: hashpassword,
@@ -50,22 +46,18 @@ export class AuthService {
         return await this.usersRepository.save(userD);
     }
 
-    async login (LoginUserDto:LoginUserDto):Promise<any> {
-        const user = await this.usersRepository.findOne({ where: { email: LoginUserDto.email } });
-        if(!user) {
-            throw new HttpException("Email is not exist", HttpStatus.UNAUTHORIZED);
-            return {message: 'User not found'};
-        }
-        const isMatch = await bcrypt.compare(LoginUserDto.password, user.password);
-        //Tối ưu hiệu suất
-        if(!isMatch) {
-            throw new HttpException("Password is incorrect", HttpStatus.UNAUTHORIZED);
-            return {message: 'Password is incorrect :3'};
-        }
-        //Tạo access token và refresh token
-        const payload = {id:user.id, email:user.email};
-        return this.generateToken(payload);
-    }
+    // async login (LoginUserDto:LoginUserDto):Promise<any> {
+    //     const user = await this.usersRepository.findOne({ where: { email: LoginUserDto.email } });
+    //     if(!user) {
+    //         throw new HttpException({message: 'email is not exist'}, HttpStatus.UNAUTHORIZED);
+    //     }
+    //     const isMatch = await bcrypt.compare(LoginUserDto.password, user.password);
+    //     if(!isMatch) {
+    //         throw new HttpException({message:'Password is incorrect'}, HttpStatus.UNAUTHORIZED);
+    //     }
+    //     const payload = {id:user.id, email:user.email};
+    //     return this.generateToken(payload);
+    // }
 
     async refreshToken(refresh_token: string): Promise<any> {
         try {
@@ -77,12 +69,11 @@ export class AuthService {
             if (checkExistToken) {
                 const payload = {id:checkExistToken.id, email:checkExistToken.email};
                 return this.generateToken(payload);
-                //return this.generateToken({id: verify.id, email: verify.email});
             } else {
-                throw new HttpException("Refresh token is not exist", HttpStatus.BAD_REQUEST);
+                throw new HttpException({message: 'Refresh token is not exist'}, HttpStatus.BAD_REQUEST);
             }
         } catch(error) {
-            throw new HttpException("Refresh token is expired", HttpStatus.BAD_REQUEST);
+            throw new HttpException({message: 'Refresh token is expired'}, HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -96,7 +87,25 @@ export class AuthService {
             {email: payload.email},
             {refresh_token: refresh_Token}
         )
-        return {access_Token, refresh_Token};
+        return {
+            access_Token, 
+            refresh_Token,
+            user_id: payload.id // Add user_id to response
+        };
+    }
+    
+    // Update login method to pass through the user_id
+    async login(LoginUserDto:LoginUserDto): Promise<any> {
+        const user = await this.usersRepository.findOne({ where: { email: LoginUserDto.email } });
+        if(!user) {
+            throw new HttpException({message: 'email is not exist'}, HttpStatus.UNAUTHORIZED);
+        }
+        const isMatch = await bcrypt.compare(LoginUserDto.password, user.password);
+        if(!isMatch) {
+            throw new HttpException({message:'Password is incorrect'}, HttpStatus.UNAUTHORIZED);
+        }
+        const payload = {id:user.id, email:user.email};
+        return this.generateToken(payload);
     }
 
     private async hashpassword(password:string):Promise<string> {
@@ -109,12 +118,10 @@ export class AuthService {
     async sendOtp(requestOtpDto: RequestOtpDto): Promise<void> {
         const user = await this.userService.findByEmail(requestOtpDto.email);
         if (!user) throw new NotFoundException('User not found');
-
         const otp = this.generateOtp();
         user.otp = otp;
-        user.otpExpires = new Date(Date.now() + 5 * 60 * 1000); // Hết hạn sau 5 phút
+        user.otpExpires = new Date(Date.now() + 5 * 60 * 1000);
         await this.userService.save(user);
-
         await this.mailService.sendOtpEmail(user.email, otp);
         this.logger.log(`OTP sent to ${user.email}`);
     }
@@ -124,24 +131,19 @@ export class AuthService {
         if (!user || user.otp !== otp || user.otpExpires < new Date()) {
             throw new BadRequestException('Invalid or expired OTP');
         }
-    
         if (!this.validatePassword(newPassword)) {
             throw new BadRequestException('Password does not meet security requirements');
         }
-    
         const hashedPassword = await this.hashpassword(newPassword);
         user.password = hashedPassword;
         user.otp = null;
         user.otpExpires = null;
         await this.userService.save(user);
-    
         this.logger.log(`OTP verified and password updated for ${user.email}`);
     }
-
     private validatePassword(password: string): boolean {
         return password.length >= 8;
     }
-
     private generateOtp(): string {
         return Math.floor(100000 + Math.random() * 900000).toString(); 
     }

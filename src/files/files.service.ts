@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { Response } from 'express';
 import { join } from 'path';
 import { existsSync, createReadStream, promises as fsPromises, access } from 'fs';
@@ -7,10 +7,13 @@ import * as sharp from 'sharp';
 import { isURL } from 'validator';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import * as markdownIt from 'markdown-it';
 
+const dotenv = require('dotenv');
+dotenv.config();
 @Injectable()
 export class FilesService {
-
+  private readonly baseUrl = process.env.BASE_URL || 'http://localhost:3000';
   private readonly logger = new Logger(FilesService.name);
 
   async getThumbnail(
@@ -144,4 +147,96 @@ export class FilesService {
     }
   }
 
+  async getImage(filename: string, res: Response) {
+    try {
+      const imagePath = join(process.cwd(), 'uploads', 'images', filename);
+      if (!existsSync(imagePath)) {
+        throw new NotFoundException('Image not found');
+      }
+      
+      res.set('Cache-Control', 'max-age=3600');
+      res.sendFile(imagePath);
+    } catch (error) {
+      throw new NotFoundException('Image not found');
+    }
+  }
+
+  async getProcessedMarkdown(fileName: string): Promise<string> {
+    let markdownContent: string;
+    
+    try {
+      if (isURL(fileName)) {
+        try {
+          const response = await axios.get(fileName);
+          markdownContent = response.data;
+        } catch (error) {
+          throw new HttpException(
+            `Failed to fetch markdown from URL: ${error.message}`,
+            HttpStatus.BAD_REQUEST
+          );
+        }
+      } else {
+        const filePath = join(process.cwd(), 'uploads', 'contents', fileName);
+        
+        // Check if file exists
+        if (!existsSync(filePath)) {
+          throw new HttpException(
+            `Markdown file not found: ${fileName}`,
+            HttpStatus.NOT_FOUND
+          );
+        }
+  
+        try {
+          markdownContent = await fsPromises.readFile(filePath, 'utf-8');
+        } catch (error) {
+          throw new HttpException(
+            `Failed to read markdown file: ${error.message}`,
+            HttpStatus.INTERNAL_SERVER_ERROR
+          );
+        }
+      }
+  
+      // Add logging
+      console.log(`Processing markdown for: ${fileName}`);
+      
+      const processedContent = this.processMarkdownContent(markdownContent);
+      if (!processedContent) {
+        throw new HttpException(
+          'Failed to process markdown content',
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+  
+      return processedContent;
+    } catch (error) {
+      // Rethrow HttpExceptions as-is
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      // Log unexpected errors
+      console.error('Markdown processing error:', error);
+      
+      throw new HttpException(
+        'Failed to process markdown file',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  private processMarkdownContent(content: string): string {
+    const processedContent = content.replace(
+      /!\[(.*?)\]\((?!https?:\/\/)([^\/\)]+)\)/g,
+      (match, alt, imageName) => {
+        return `![${alt}](${this.baseUrl}/api/uploads/image/${imageName})`;
+      }
+    );
+    const md = new markdownIt({
+      html: true,
+      breaks: true,
+      linkify: true
+    });
+
+    return md.render(processedContent);
+  }
 }
