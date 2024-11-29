@@ -18,7 +18,7 @@ import { UserModule } from 'src/user/user.module';
       //get secret from .env
       secret: '486464',
       //get expriesIn from .env ('JWT_REFRESH_EXP')
-      signOptions: {expiresIn: '1h'}
+      signOptions: {expiresIn: '3h'}
     }),
     ConfigModule,
     UserModule,

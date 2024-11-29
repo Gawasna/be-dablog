@@ -1,10 +1,10 @@
 import { MailService } from './../mail/mail.service';
 import { AuthService } from './auth.service';
-import { Body, Controller, Get, HttpException, HttpStatus, Logger, Post, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, HttpStatus, Logger, Post, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { SignupUserDto } from './dto/signup-user.dto';
 import { Users } from 'src/user/entities/user.entity';
 import { LoginUserDto } from './dto/login-user.dto';
-import { SkipThrottle, Throttle } from '@nestjs/throttler'; 
+import { SkipThrottle, Throttle, ThrottlerGuard } from '@nestjs/throttler'; 
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 
@@ -33,13 +33,15 @@ export class AuthController {
         }
     }
 
+    //MAX 10 request per minute
+    @UseGuards(ThrottlerGuard)
     @Throttle({ default: { limit: 10, ttl: 60000} })
     @Post('login')
     @UsePipes(ValidationPipe)
     login(@Body() LoginUserDto:LoginUserDto): Promise<any> {
         console.log('Dang nhap...')
         try {
-            this.logger.log(`User ${LoginUserDto.email} is logging in`);
+            this.logger.log(`User ${LoginUserDto.email} try logging in`);
             return this.AuthService.login(LoginUserDto);
         } catch (error) {
             throw new HttpException(
@@ -47,7 +49,6 @@ export class AuthController {
                 HttpStatus.UNAUTHORIZED
               );
         }
-        
     }
 
     @Post('refresh-token')
@@ -56,6 +57,7 @@ export class AuthController {
         return this.AuthService.refreshToken(refresh_Token);
     }
 
+    @Throttle({ default: { limit: 10, ttl: 60000} })
     @Post('request-otp')
     async requestOtp(@Body() requestOtpDto:RequestOtpDto ) {
         return this.AuthService.sendOtp(requestOtpDto);

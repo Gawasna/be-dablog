@@ -4,6 +4,8 @@ import { join } from 'path';
 import * as fs from 'fs';
 import { AppModule } from './app.module';
 import * as express from 'express';
+import { ThrottlerGuard } from '@nestjs/throttler';
+import { ValidationPipe } from '@nestjs/common';
 
 const dotenv = require('dotenv');
 dotenv.config();
@@ -28,7 +30,8 @@ async function bootstrap() {
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads' , '..')));
   const srPath = express.static(join(__dirname, '..', 'uploads', '..'));
   app.use(srPath);
-
+  // app.useGlobalGuards(new ThrottlerGuard());
+  // app.useGlobalPipes(new ValidationPipe());
   await app.listen(3000).then(() => {
     console.log('Server is running on: http://localhost:3000');
     console.log('Require connection to MariaDB : ', process.env.DB_NAME);

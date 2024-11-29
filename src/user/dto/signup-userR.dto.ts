@@ -1,6 +1,6 @@
 import { Contains, IsEmail, IsIn, IsNotEmpty, IsOptional, MinLength } from "class-validator";
 
-export class SignupUserRDto {
+export class ALTCreateUser {
     @IsNotEmpty()
     username: string;
 
@@ -14,8 +14,7 @@ export class SignupUserRDto {
     //add avatar in future
 
     //role admin, user
-    @IsIn(['admin', 'user'])
-    role: string;
+    role: 'admin' | 'user';
 
     @IsOptional()
     status: number;

@@ -74,7 +74,15 @@ export class PostService {
     return await this.postRepository
       .createQueryBuilder('post')
       .leftJoinAndSelect('post.category', 'category')
-      .select(['post.id', 'post.title', 'post.description', 'post.image_path', 'post.created_at', 'category.name'])
+      .select([
+        'post.id',
+        'post.title',
+        'post.description',
+        'post.image_path',
+        'post.created_at',
+        'category.name'
+      ])
+      .where('post.status = :status', { status: 'public' })
       .orderBy('post.created_at', 'DESC')
       .offset(offset)
       .limit(limit)
@@ -311,5 +319,83 @@ export class PostService {
       where: { post_id: postId }
     });
     return stats?.total_comments || 0;
+  }
+
+  async getallposts(page: number, limit: number) {
+    const offset = (page - 1) * limit;
+    const [posts, total] = await this.postRepository
+      .createQueryBuilder('post')
+      .leftJoinAndSelect('post.category', 'category')
+      .select([
+        'post.id',
+        'post.title',
+        'post.description',
+        'post.image_path',
+        'post.status',
+        'category.name',
+        'post.created_at'
+      ])
+      .orderBy('post.created_at', 'DESC')
+      .offset(offset)
+      .limit(limit)
+      .getManyAndCount();
+
+      return {
+        posts,
+        pagination: {
+          total,
+          page,
+          totalPages: Math.ceil(total / limit)
+        },
+      };
+  }
+
+  /**
+   * Deletes a post by its ID.
+   *
+   * @param postId - The ID of the post to delete.
+   * @returns A promise that resolves when the post is deleted.
+   * @throws {NotFoundException} If the post with the given ID is not found.
+   *
+   * @log Deletes a post with the given ID and logs the action.
+   */
+  async deletePost(postId: number): Promise<void> {
+    const post = await this.postRepository.findOne({
+      where: { id: postId }
+    });
+
+    if (!post) {
+      throw new NotFoundException('Post not found');
+    }
+
+    await this.postRepository.remove(post);
+    this.logger.error(`Deleted post with id: ${postId}`);
+  }
+
+  async modifyPost(postId: number, updateData: Partial<Posts>): Promise<Posts> {
+    const post = await this.postRepository.findOne({
+      where: { id: postId }
+    });
+
+    if (!post) {
+      throw new NotFoundException('Post not found');
+    }
+
+    if (updateData.title) {
+      post.title = updateData.title;
+    }
+    if (updateData.description) {
+      post.description = updateData.description;
+    }
+    if (updateData.category_id) {
+      post.category_id = updateData.category_id;
+    }
+    if (updateData.status) {
+      post.status = updateData.status;
+    }
+
+    await this.postRepository.save(post);
+    this.logger.error(`Updated post with id: ${postId}`);
+    return post;
   }
 }

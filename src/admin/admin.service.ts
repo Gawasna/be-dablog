@@ -19,10 +19,7 @@ export class AdminService {
   ) {}
 
   async createPost(post: CreatePostDto): Promise<Posts> {
-     // Create post
      const newPost = await this.postsRepository.save(post);
-
-     // Initialize post statistics
      await this.postStatisticsRepository.save({
        post_id: newPost.id,
        total_likes: 0,

@@ -20,6 +20,7 @@ import { AdminService } from './admin/admin.service';
 import { AdminModule } from './admin/admin.module';
 import { AdminController } from './admin/admin.controller';
 import { PostStatisticsModule } from './poststatistics/poststatistics.module';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 const dotenv = require('dotenv');
 dotenv.config();
@@ -28,7 +29,7 @@ dotenv.config();
   imports: [
     TypeOrmModule.forRoot({
       ...dataSourceOptions,
-      logging: false, // bật log
+      logging: false,
       logger: 'advanced-console',
     }),
     ConfigModule.forRoot({
@@ -39,6 +40,10 @@ dotenv.config();
       ttl: 60000,
       max: 1000,
     }),
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 10,
+    }]),
     UserModule,
     PostModule,
     CategoryModule,

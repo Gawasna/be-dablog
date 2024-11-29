@@ -94,7 +94,6 @@ export class AuthService {
         };
     }
     
-    // Update login method to pass through the user_id
     async login(LoginUserDto:LoginUserDto): Promise<any> {
         const user = await this.usersRepository.findOne({ where: { email: LoginUserDto.email } });
         if(!user) {

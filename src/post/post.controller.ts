@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Logger, NotFoundException, Param, Patch, Post, Query, Req, Res, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Logger, NotFoundException, Param, Patch, Post, Put, Query, Req, Res, UseGuards, UseInterceptors } from '@nestjs/common';
 import { PostService } from './post.service';
 import { Request, Response } from 'express';
 // import { SkipThrottle, Throttle } from '@nestjs/throttler';
@@ -7,6 +7,10 @@ import { CacheInterceptor } from '@nestjs/cache-manager';
 import { FilesService } from 'src/files/files.service';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { CreateCommentDTO } from 'src/comment/dto/create-comment.dto';
+import { RoleGuard } from 'src/auth/role.guard';
+import { Role } from 'src/user/role.enum';
+import { Roles } from 'src/auth/role.decorator';
+import { Posts } from './entities/post.entity';
 
 @Controller('api/post')
 export class PostController {
@@ -24,6 +28,41 @@ export class PostController {
     @Get('latest')
     async getLatestPosts(@Query('page') page: number, @Query('limit') limit: number) {
         return await this.postService.getLatestPosts(page, limit);
+    }
+
+    @Roles(Role.ADMIN)
+    @UseGuards(AuthGuard, RoleGuard)
+    @Get('all-post')
+    async getAllposts(
+        @Query('page') page: number, 
+        @Query('limit') limit: number
+    ) {
+        return await this.postService.getallposts(page, limit);
+    }
+
+    @Roles(Role.ADMIN)
+    @UseGuards(AuthGuard, RoleGuard)
+    @Delete('delete-post/:id')
+    async delpost(@Param('id') id: number) {
+        return await this.postService.deletePost(id);
+    }
+
+    @Roles(Role.ADMIN)
+    @UseGuards(AuthGuard, RoleGuard)
+    @Put('modify-post/:id')
+    async modifyPost(
+        @Param('id') postId: number,
+        @Body() updateData: Partial<Posts>
+    ) {
+        try {
+            const updatedPost = await this.postService.modifyPost(postId, updateData);
+            return updatedPost;
+        } catch (error) {
+            throw new HttpException(
+                error.message,
+                error instanceof HttpException ? error.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
     }
 
     @Get('popular')
